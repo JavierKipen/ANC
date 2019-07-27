@@ -69,7 +69,6 @@ int32_t main(void)
   FxLMSInstance I=createFxLMSInstance(muSHat,SHatOrder,mu,WOrder);
 
 
-  unsigned int i=0;
   while(state != ERROR_ANC)
   {
 	  if(newInputAvailable())
