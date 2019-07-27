@@ -4,8 +4,8 @@
   @author   Javier
  ******************************************************************************/
 
-#ifndef BOXMULLER_H_
-#define BOXMULLER_H_
+#ifndef WHITENOISEGEN_H_
+#define WHITENOISEGEN_H_
 
 /*******************************************************INCLUDE HEADER FILES********************************************************/
 #include "arm_math.h"
@@ -14,8 +14,9 @@
 /***********************************************ENUMERATIONS AND STRUCTURES AND TYPEDEFS*********************************************/
 
 /************************************************FUNCTION PROTOTYPES WITH GLOBAL SCOPE***********************************************/
-float ranf();         /* ranf() is uniform in 0..1 */
-float box_muller(float m, float s);
-float32_t whiteNoiseGen(float32_t s);
-#endif // BOXMULLER_H_
+void initWNG();
+float ranf();         //Float random entre 0 y 1
+float box_muller(float m, float s); //Este era un método para generar WGN pero tardaba en computar
+float32_t whiteNoiseGen(float32_t s); //Este usa una lookup table.
+#endif // WHITENOISEGEN_H_
 

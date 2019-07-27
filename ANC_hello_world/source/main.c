@@ -7,9 +7,9 @@
 #include "clock_config.h"
 #include "IOInterface.h"
 
-#include "boxmuller.h" //A borrar esto
 #include "fsl_dac.h"
 #include <stdlib.h>
+#include <whiteNoiseGen.h> //A borrar esto
 
 #define DAC_BASEADDR DAC0
 

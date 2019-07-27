@@ -5,8 +5,8 @@
  ******************************************************************************/
 
 /*************************************************** INCLUDE HEADER FILES **********************************************************/
+#include "whiteNoiseGen.h"
 #include "ANC_FxLMS.h"
-#include "boxmuller.h"
 
 /******************************************** DEFINES, STATIC VARIABLES AND STRUCTS ************************************************/
 #define EST_SEC_NORM_STD 0.02
@@ -26,6 +26,7 @@ FxLMSInstance createFxLMSInstance(float32_t muSHat,uint32_t SHatOrder,float32_t 
 	clearArray(retVal.XFilt,retVal.WOrder);
 	clearArray(retVal.NoiseStates,retVal.WOrder);
 	clearArray(retVal.Weights,retVal.WOrder);
+	initWNG();
 	return retVal;
 }
 float32_t applyFxLMS(FxLMSInstance* I, float32_t noiseSample,float32_t musicSample,float32_t errMicSample)
