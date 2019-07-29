@@ -20,8 +20,13 @@
 
 #include "pin_mux.h"
 #include "clock_config.h"
-/******************************************** DEFINES, STATIC VARIABLES AND STRUCTS ************************************************/
 
+
+
+#define IO_FROM_PC
+
+/******************************************** DEFINES, STATIC VARIABLES AND STRUCTS ************************************************/
+#ifndef IO_FROM_PC
 //FTM Defines
 #define FTM_BASEADDR FTM0
 #define FTM_IRQ_NUM FTM0_IRQn
@@ -191,3 +196,52 @@ float ADCRead2Voltage(float i)
 {
 	return (i-2048.0f)/1241.21f;
 }
+#else
+
+#include "fsl_uart.h"
+
+#define DEMO_UART_CLKSRC UART0_CLK_SRC
+#define DEMO_UART_CLK_FREQ CLOCK_GetFreq(UART0_CLK_SRC)
+
+void initIOInterface()
+{
+	uart_config_t config;
+/*
+	 * config.baudRate_Bps = 115200U;
+	 * config.parityMode = kUART_ParityDisabled;
+	 * config.stopBitCount = kUART_OneStopBit;
+	 * config.txFifoWatermark = 0;
+	 * config.rxFifoWatermark = 1;
+	 * config.enableTx = false;
+	 * config.enableRx = false;
+	 */
+	UART_GetDefaultConfig(&config);
+	config.enableTx = true;
+	config.enableRx = true;
+	UART_Init(UART0, &config, DEMO_UART_CLK_FREQ);
+}
+int newInputAvailable()
+{
+	return 1;
+}
+InputMeasure getInputs()
+{
+	InputMeasure retVal;
+	uint8_t read[2];
+	UART_ReadBlocking(UART0, read, 2);
+	retVal.errMicSample=((uint16_t)read[1])<<8+(uint16_t)read[0];
+	return retVal;
+}
+void pushOutput(q15_t output)
+{
+	uint8_t toSend[2];
+	toSend[0]=output&0xFF;
+	toSend[1]=output>>8;
+	UART_WriteBlocking(UART0, toSend, 2);
+}
+int isProcessingTimeRisky(float processingTime)
+{
+	return 0;
+}
+
+#endif
