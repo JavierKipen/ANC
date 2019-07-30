@@ -228,8 +228,11 @@ InputMeasure getInputs()
 {
 	InputMeasure retVal;
 	uint8_t read[2];
+	uint16_t high,low;
 	UART_ReadBlocking(UART0, read, 2);
-	retVal.errMicSample=((uint16_t)read[1])<<8+(uint16_t)read[0];
+	high=((uint16_t)read[1])<<8;
+	low=(uint16_t)read[0];
+	retVal.errMicSample=high+low;
 	return retVal;
 }
 void pushOutput(q15_t output)
