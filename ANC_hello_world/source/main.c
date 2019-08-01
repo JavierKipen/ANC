@@ -83,7 +83,10 @@ int32_t main(void)
 			  pushOutput(applyFxLMS(&I, im.noiseSample,im.musicSample,im.errMicSample));
 
 		  if(state==CALIBRATION && sampleCount > CALIB_SAMPLES)
+			  {
 			  state=ANC;
+			  saveSecPathF(&I);
+			  }
 		  if(isProcessingTimeRisky((float32_t)(clock()-start)/CLOCKS_PER_SEC))
 			  state=ERROR_ANC;
 		 /* if(state==CALIBRATION && sampleCount%10000 == 0)

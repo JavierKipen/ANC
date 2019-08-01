@@ -32,6 +32,7 @@ typedef struct{
 	float32_t Weights[MAX_WEIGHT_ORDER];
 	float32_t mu,muSHat; //mu para el entrenamiento final, y para la estimacion del cam secundario.
 	arm_lms_instance_f32 SecPathEst;
+	arm_fir_instance_f32 SHatFIR;
 	uint32_t SHatOrder, WOrder;
 }FxLMSInstanceF;
 /************************************************FUNCTION PROTOTYPES WITH GLOBAL SCOPE***********************************************/
@@ -40,5 +41,7 @@ q15_t estSecPathQ(FxLMSInstanceQ* I,q15_t errMicSample);
 
 void createFxLMSInstanceF(FxLMSInstanceF *I,float32_t muSHat,uint32_t SHatOrder,float32_t mu,uint32_t WOrder);
 q15_t estSecPathF(FxLMSInstanceF* I,q15_t errMicSample);
+void saveSecPathF(FxLMSInstanceF *I);
+q15_t applyFxLMSF(FxLMSInstanceF* I,q15_t err,q15_t ref,q15_t music);
 #endif // ANC_FXLMSq_H_
 

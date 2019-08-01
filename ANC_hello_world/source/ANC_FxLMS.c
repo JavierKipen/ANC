@@ -43,6 +43,12 @@ q15_t estSecPathQ(FxLMSInstanceQ* I,q15_t errMicSample)
 
 	return DACOutput;
 }
+
+
+
+
+
+
 void createFxLMSInstanceF(FxLMSInstanceF *I,float32_t muSHat,uint32_t SHatOrder,float32_t mu,uint32_t WOrder)
 {
 	I->SHatOrder=SHatOrder;I->mu=mu;
@@ -54,8 +60,8 @@ void createFxLMSInstanceF(FxLMSInstanceF *I,float32_t muSHat,uint32_t SHatOrder,
 	clearArrayf(I->Weights,I->WOrder);
 	initWNG();
 	arm_lms_init_f32(&(I->SecPathEst), I->SHatOrder, I->SHat, I->SHatStates, I->muSHat, 1);
-
 }
+
 q15_t estSecPathF(FxLMSInstanceF* I,q15_t errMicSample)
 {
 	float32_t DACOutput=whiteNoiseGen(EST_SEC_NORM_STD); //To get normal random noise.
@@ -70,7 +76,30 @@ q15_t estSecPathF(FxLMSInstanceF* I,q15_t errMicSample)
 		//arm_lms_f32(&(I->SecPathEst),outputDebug, micDebug,X,X2,1000);
 	return DACOutq15;
 }
+void saveSecPathF(FxLMSInstanceF *I)
+{
+	arm_fir_init_f32(&I->SHatFIR, I->SHatOrder,I->SHat, I->SHatStates, 1);
+}
+q15_t applyFxLMSF(FxLMSInstanceF* I,q15_t err,q15_t ref,q15_t music)
+{
+	q15_t retVal;
+	return retVal;
+}
+/*float32_t applyFxLMS(FxLMSInstance* I, float32_t noiseSample,float32_t musicSample,float32_t errMicSample)
+{
+	float32_t aux[MAX_WEIGHT_ORDER], output,XFilt;
+	arm_scale_f32(I->XFilt, I->mu*errMicSample, aux, I->WOrder);
+	arm_add_f32(I->Weights, aux, I->Weights, I->WOrder); //Given the output, Adjusts weights from previous states
 
+	pushFrontFl(I->NoiseStates, I->WOrder, noiseSample); //Obtains New states
+	pushFrontFl(I->SHatStates, I->SHatOrder, noiseSample);
+	arm_dot_prod_f32(I->SHat, I->SHatStates, I->SHatOrder, &XFilt);
+	pushFrontFl(I->XFilt, I->WOrder, XFilt);
+	arm_dot_prod_f32(I->Weights, I->NoiseStates, I->WOrder, &output);//Noise at err mic estimation
+	output*=(-1); //IMPORTANTISIMOOOO!
+	output+=musicSample;
+	return output;
+}*/
 /****************************************************LOCAL FUNCTION DEFINITIONS*****************************************************/
 void pushFrontFlq(q15_t * arr, uint32_t len, q15_t data)
 {
