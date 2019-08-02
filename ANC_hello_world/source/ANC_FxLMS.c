@@ -49,17 +49,19 @@ q15_t estSecPathQ(FxLMSInstanceQ* I,q15_t errMicSample)
 
 
 
-void createFxLMSInstanceF(FxLMSInstanceF *I,float32_t muSHat,uint32_t SHatOrder,float32_t mu,uint32_t WOrder)
+void createFxLMSInstanceF(FxLMSInstanceF *I,float32_t muSHat,uint32_t SHatOrder,float32_t mu,uint32_t COrder)
 {
 	I->SHatOrder=SHatOrder;I->mu=mu;
-	I->muSHat=muSHat;I->WOrder=WOrder;
-	clearArrayf(I->SHat,I->SHatOrder);
+	I->muSHat=muSHat;I->COrder=COrder;
+	clearArrayf(I->SHatCoefs,I->SHatOrder);
 	clearArrayf(I->SHatStates,I->SHatOrder);
-	clearArrayf(I->XFilt,I->WOrder);
-	clearArrayf(I->NoiseStates,I->WOrder);
-	clearArrayf(I->Weights,I->WOrder);
+	clearArrayf(I->ControllerCoefs,I->COrder);
+	clearArrayf(I->ControllerStates,I->COrder);
+	clearArrayf(I->ControllerLMSStates,I->COrder);
 	initWNG();
-	arm_lms_init_f32(&(I->SecPathEst), I->SHatOrder, I->SHat, I->SHatStates, I->muSHat, 1);
+	arm_lms_init_f32(&(I->SecPathEst), I->SHatOrder, I->SHatCoefs, I->SHatStates, I->muSHat, 1);
+	arm_lms_init_f32(&(I->ControllerTuner), I->COrder, I->ControllerCoefs, I->ControllerLMSStates, I->mu, 1);
+	arm_fir_init_f32(&(I->ControllerFIR), I->COrder,I->ControllerCoefs, I->ControllerStates, 1);
 }
 
 q15_t estSecPathF(FxLMSInstanceF* I,q15_t errMicSample)
@@ -67,22 +69,27 @@ q15_t estSecPathF(FxLMSInstanceF* I,q15_t errMicSample)
 	float32_t DACOutput=whiteNoiseGen(EST_SEC_NORM_STD); //To get normal random noise.
 	float32_t errMicFloat,err,OutputEst;
 	q15_t DACOutq15;
-	//outputDebug[cont]=DACOutput;
 	arm_q15_to_float(&errMicSample,&errMicFloat,1);
-	//micDebug[cont++]=errMicFloat;
-	arm_lms_f32(&(I->SecPathEst),&DACOutput, &errMicFloat,&OutputEst,&err,1); //Por que mierda no anda la re concha del pato
+	arm_lms_f32(&(I->SecPathEst),&DACOutput, &errMicFloat,&OutputEst,&err,1);
 	arm_float_to_q15(&DACOutput,&DACOutq15,1);
-	//if(cont==5)
-		//arm_lms_f32(&(I->SecPathEst),outputDebug, micDebug,X,X2,1000);
 	return DACOutq15;
 }
 void saveSecPathF(FxLMSInstanceF *I)
 {
-	arm_fir_init_f32(&I->SHatFIR, I->SHatOrder,I->SHat, I->SHatStates, 1);
+	clearArrayf(I->SHatStates,I->SHatOrder);
+	arm_fir_init_f32(&(I->SHatFIR), I->SHatOrder,I->SHatCoefs, I->SHatStates, 1);
 }
 q15_t applyFxLMSF(FxLMSInstanceF* I,q15_t err,q15_t ref,q15_t music)
 {
 	q15_t retVal;
+	float32_t errF,refF,musicF,xHat,ControllerInput,retValF=0,aux1,aux2;
+	arm_q15_to_float(&err,&errF,1);arm_q15_to_float(&ref,&refF,1);arm_q15_to_float(&music,&musicF,1);
+	ControllerInput=refF+musicF;
+	arm_fir_f32(&(I->SHatFIR),&refF, &xHat, 1); //Checkeado anda bn
+	arm_lms_f32(&(I->ControllerTuner),&xHat,&errF,&aux1,&aux2,1);
+	arm_fir_f32(&(I->ControllerFIR),&ControllerInput, &retValF, 1);
+	retValF=-retValF; //Esto no se muy bn porque
+	arm_float_to_q15(&retValF,&retVal,1);
 	return retVal;
 }
 /*float32_t applyFxLMS(FxLMSInstance* I, float32_t noiseSample,float32_t musicSample,float32_t errMicSample)

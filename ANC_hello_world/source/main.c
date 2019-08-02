@@ -12,11 +12,11 @@
 
 #define DAC_BASEADDR DAC0
 
-//#define ANC_F
+//#define ANC_FINAL
 //#define TEST_FLMS_SECPATH
 
 
-#define CALIB_SAMPLES 100000
+#define CALIB_SAMPLES 10000
 typedef enum{CALIBRATION, ANC, ERROR_ANC}ANC_STATES;
 
 float32_t SHatPrev[50];
@@ -31,10 +31,10 @@ int32_t main(void)
   BOARD_InitDebugConsole();
 
   initIOInterface();
-#ifndef ANC_F
+#ifndef ANC_FINAL
+#ifdef FLMS_SECPATH //Second path test
   float32_t muSHat=1;float32_t mu=0.1;
   uint32_t SHatOrder=8;uint32_t WOrder=4;uint32_t i=0;
-#ifdef FLMS_SECPATH
   FxLMSInstanceF I;
   createFxLMSInstanceF(&I,muSHat,SHatOrder,mu,WOrder);
   while(1)
@@ -46,18 +46,20 @@ int32_t main(void)
 	  if(i==10000)
 		  i++; //Esto parece funcionar
   }
-#else
-  FxLMSInstanceQ I;
-    createFxLMSInstanceQ(&I,muSHat,SHatOrder,mu,WOrder);
-    while(1)
-    {
-  	  InputMeasure im=getInputs();
-  	  q15_t sendVal = estSecPathQ(&I,im.errMicSample);
-  	  pushOutput(sendVal);
-  	  i++;
-  	  if(i==10000)
-  		  i++; //Esto parece funcionar
-    }
+#else //ANC entero test
+  float32_t muSHat=0.05;float32_t mu=0.002;
+  uint32_t SHatOrder=5;uint32_t WOrder=15;unsigned long long i=0;
+  FxLMSInstanceF I;
+  float32_t secPathCoefs[]={0.1, 0.2, 0.3,0.1,0};
+  createFxLMSInstanceF(&I,muSHat,SHatOrder,mu,WOrder);
+  arm_copy_f32 (secPathCoefs, I.SHatCoefs, 5);
+  saveSecPathF(&I);
+  pushOutput(0);//To start matlab script
+  while(1)
+  {
+	  InputMeasure im=getInputs();
+	  pushOutput(applyFxLMSF(&I,im.errMicSample,im.noiseSample,im.musicSample));
+  }
 #endif
 
 #else

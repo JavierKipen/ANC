@@ -24,7 +24,7 @@
 
 
 #define IO_FROM_PC
-
+#define ANC_TEST
 /******************************************** DEFINES, STATIC VARIABLES AND STRUCTS ************************************************/
 #ifndef IO_FROM_PC
 //FTM Defines
@@ -224,6 +224,7 @@ int newInputAvailable()
 {
 	return 1;
 }
+#ifdef SECPATH_TEST
 InputMeasure getInputs()
 {
 	InputMeasure retVal;
@@ -242,9 +243,29 @@ void pushOutput(q15_t output)
 	toSend[1]=output>>8;
 	UART_WriteBlocking(UART0, toSend, 2);
 }
+#endif
+#ifdef ANC_TEST
+InputMeasure getInputs()
+{
+	InputMeasure retVal;
+	uint8_t read[6];
+	UART_ReadBlocking(UART0, read, 6);
+	retVal.noiseSample=(((uint16_t)read[1])<<8)+((uint16_t)read[0]);
+	retVal.errMicSample=(((uint16_t)read[3])<<8)+((uint16_t)read[2]);
+	retVal.musicSample=(((uint16_t)read[5])<<8)+((uint16_t)read[4]);
+	return retVal;
+}
+void pushOutput(q15_t output)
+{
+	uint8_t toSend[2];
+	toSend[0]=output&0xFF;
+	toSend[1]=output>>8;
+	UART_WriteBlocking(UART0, toSend, 2);
+}
+
+#endif
 int isProcessingTimeRisky(float processingTime)
 {
 	return 0;
 }
-
 #endif
