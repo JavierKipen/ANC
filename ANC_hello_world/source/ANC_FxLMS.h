@@ -10,37 +10,60 @@
 
 /*******************************************************INCLUDE HEADER FILES********************************************************/
 #include "arm_math.h"
+#include "CommonConfig.h"
 /*********************************************CONSTANT AND MACRO DEFINITIONS USING #DEFINE******************************************/
-#define MAX_SEC_PATH_ORDER 50
-#define MAX_WEIGHT_ORDER 25
-#define MAX_ORDER 50
-//#define MAX(a,b) (((a)>(b))?(a):(b))
-/***********************************************ENUMERATIONS AND STRUCTURES AND TYPEDEFS*********************************************/
-typedef struct{
-	q15_t SHat[MAX_SEC_PATH_ORDER]; //Estimación del camino secundario
-	q15_t NoiseStates[MAX_WEIGHT_ORDER],SHatStates[MAX_SEC_PATH_ORDER];
-	q15_t XFilt[MAX_WEIGHT_ORDER];
-	q15_t Weights[MAX_WEIGHT_ORDER];
-	q15_t mu,muSHat; //mu para el entrenamiento final, y para la estimacion del cam secundario.
-	arm_lms_instance_q15 SecPathEst;
-	uint32_t SHatOrder, WOrder;
-}FxLMSInstanceQ;
+#define MAX_FILTER_ORDER 50
 
+/* Here is the sketch of the system.
+%
+%              +-----------+                       +
+% ref(k)--+--->|   P(z)    |--yp(k)----------------> sum --+---> e(k)
+%         |    +-----------+                          ^-   |
+%         |                                           |    |
+%         |        \                                ys(k)  |
+%         |    +-----------+          +-----------+   |    |
+%         +--->|   C(z)    |--Out(k)->|   S(z)    |---+    |
+%         |    +-----------+          +-----------+        |
+%         |            \                                   |
+%         |             \----------------\                 |
+%         |                               \                |
+%         |    +-----------+          +-----------+        |
+%         +--->|  SHat(z)  |-XHat(k)->|    LMS    |<-------+
+%              +-----------+          +-----------+        */
+
+/***********************************************ENUMERATIONS AND STRUCTURES AND TYPEDEFS*********************************************/
+#ifdef PROCESSING_W_F32
 typedef struct{
-	float32_t SHatCoefs[MAX_ORDER],SHatStates[MAX_ORDER]; //Estimación del camino secundario
-	float32_t ControllerCoefs[MAX_ORDER],ControllerLMSStates[MAX_ORDER],ControllerStates[MAX_ORDER];
+	float32_t SHatCoefs[MAX_ORDER],SHatStates[MAX_ORDER+BLOCKSIZE]; //Estimación del camino secundario
+	float32_t ControllerCoefs[MAX_ORDER],ControllerLMSStates[MAX_ORDER+BLOCKSIZE],ControllerStates[MAX_ORDER+BLOCKSIZE];
 	float32_t mu,muSHat; //mu para el entrenamiento final, y para la estimacion del cam secundario.
 	arm_lms_instance_f32 SecPathEst,ControllerTuner;
 	arm_fir_instance_f32 SHatFIR,ControllerFIR;
 	uint32_t SHatOrder, COrder;
-}FxLMSInstanceF;
+}FxLMSInstance;
+#elif PROCESSING_W_Q15
+typedef struct{
+	q15_t SHatCoefs[MAX_ORDER],SHatStates[MAX_ORDER+BLOCKSIZE]; //Estimación del camino secundario
+	q15_t ControllerCoefs[MAX_ORDER],ControllerLMSStates[MAX_ORDER+BLOCKSIZE],ControllerStates[MAX_ORDER+BLOCKSIZE];
+	q15_t mu,muSHat; //mu para el entrenamiento final, y para la estimacion del cam secundario.
+	arm_lms_instance_q15 SecPathEst,ControllerTuner;
+	arm_fir_instance_q15 SHatFIR,ControllerFIR;
+	uint32_t SHatOrder, COrder;
+}FxLMSInstance;
+#elif PROCESSING_W_Q31
+typedef struct{
+	q31_t SHatCoefs[MAX_ORDER],SHatStates[MAX_ORDER+BLOCKSIZE]; //Estimación del camino secundario
+	q31 ControllerCoefs[MAX_ORDER],ControllerLMSStates[MAX_ORDER+BLOCKSIZE],ControllerStates[MAX_ORDER+BLOCKSIZE];
+	q31 mu,muSHat; //mu para el entrenamiento final, y para la estimacion del cam secundario.
+	arm_lms_instance_q31 SecPathEst,ControllerTuner;
+	arm_fir_instance_q31 SHatFIR,ControllerFIR;
+	uint32_t SHatOrder, COrder;
+}FxLMSInstance;
+#endif
 /************************************************FUNCTION PROTOTYPES WITH GLOBAL SCOPE***********************************************/
-void createFxLMSInstanceQ(FxLMSInstanceQ *I,float32_t muSHat,uint32_t SHatOrder,float32_t mu,uint32_t WOrder);
-q15_t estSecPathQ(FxLMSInstanceQ* I,q15_t errMicSample);
-
-void createFxLMSInstanceF(FxLMSInstanceF *I,float32_t muSHat,uint32_t SHatOrder,float32_t mu,uint32_t COrder);
-q15_t estSecPathF(FxLMSInstanceF* I,q15_t errMicSample);
-void saveSecPathF(FxLMSInstanceF *I);
-q15_t applyFxLMSF(FxLMSInstanceF* I,q15_t err,q15_t ref,q15_t music);
+void createFxLMSInstance(FxLMSInstance *I,float32_t muSHat,uint32_t SHatOrder,float32_t mu,uint32_t COrder);
+void estSecPath(FxLMSInstance* I,unsigned int *errMicSamples,unsigned int *toOutput);//Se tomará el input como un array de BLOCKSIZE elementos
+void saveSecPath(FxLMSInstance *I);
+void applyFxLMS(FxLMSInstance * I,InputMeasure *samples,unsigned int * toOutput);//Se tomará el input como un array de BLOCKSIZE elementos
 #endif // ANC_FXLMSq_H_
 

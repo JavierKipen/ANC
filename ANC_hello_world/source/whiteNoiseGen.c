@@ -19,41 +19,21 @@ void initWNG()
 	RNGA_Init(RNG);
 }
 
-float ranf(){
-	uint32_t uintRand[2];
-	RNGA_GetRandomData(RNG, uintRand, sizeof(uintRand)); //Lo puse con un arreglo porque sino me tiraba un error que no pude arreglar
-	float aux= (float)uintRand[0] / (float)UINT32_MAX;
+void ranf(float *rNmbs,unsigned NNmbs)
+{
+	uint32_t uintRand[NNmbs+1]; //Se genera 1 número más porque si pedís 1 solo número no anda la funcion no se pk
+	RNGA_GetRandomData(RNG, uintRand, NNmbs+1);
+	for(unsigned int i=0;i<NNmbs;i++)
+		rNmbs[i]=(float)uintRand[i] / (float)UINT32_MAX;
 	return aux;
 }
-
-float box_muller(float m, float s)	/* normal random variate generator */
-{				        /* mean m, standard deviation s */
-	float x1, x2, w, y1;
-	static float y2;
-	static int use_last = 0;
-
-	if (use_last)		        /* use value from previous call */
-	{
-		y1 = y2;
-		use_last = 0;
-	}
-	else
-	{
-		do {
-			x1 = 2.0 * ranf() - 1.0;
-			x2 = 2.0 * ranf() - 1.0;
-			w = x1 * x1 + x2 * x2;
-		} while ( w >= 1.0 );
-
-		w = sqrt( (-2.0 * log( w ) ) / w );
-		y1 = x1 * w;
-		y2 = x2 * w;
-		use_last = 1;
-	}
-
-	return( m + y1 * s );
+void whiteNoiseGen(float32_t *WGN,float32_t s)
+{
+	float32_t indexes[BLOCKSIZE];
+	ranf(indexes,BLOCKSIZE);
+	for(unsigned int i=0;i<BLOCKSIZE;i++)
+		WGN[i]=whiteNoise[((unsigned int)indexes[i]*WHITE_NOISE_SAMPLES)]*s; //Elige un sample random de ruido gausiano normal y lo multiplica por el s deseado
 }
-
 float32_t whiteNoiseGen(float32_t s)
 {				        /* mean m, standard deviation s */
 	unsigned int index =(unsigned int)(ranf()*WHITE_NOISE_SAMPLES); //Elige una de las samples al azar

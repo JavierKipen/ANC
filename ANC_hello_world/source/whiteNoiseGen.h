@@ -9,14 +9,14 @@
 
 /*******************************************************INCLUDE HEADER FILES********************************************************/
 #include "arm_math.h"
+#include "CommonConfig.h"
 /*********************************************CONSTANT AND MACRO DEFINITIONS USING #DEFINE******************************************/
 
 /***********************************************ENUMERATIONS AND STRUCTURES AND TYPEDEFS*********************************************/
 
 /************************************************FUNCTION PROTOTYPES WITH GLOBAL SCOPE***********************************************/
 void initWNG();
-float ranf();         //Float random entre 0 y 1
-float box_muller(float m, float s); //Este era un método para generar WGN pero tardaba en computar
-float32_t whiteNoiseGen(float32_t s); //Este usa una lookup table.
+void ranf(float *rNmbs,unsigned NNmbs);         //Genera Floats random entre 0 y 1,
+void whiteNoiseGen(float32_t *WGN,float32_t s); //Este usa una lookup table, escribe BLOCKSIZE elementos de ruido blanco g
 #endif // WHITENOISEGEN_H_
 

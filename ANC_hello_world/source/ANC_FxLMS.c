@@ -15,116 +15,121 @@ static unsigned int cont=0;
 /******************************************** DEFINES, STATIC VARIABLES AND STRUCTS ************************************************/
 #define EST_SEC_NORM_STD 0.05
 /************************************FUNCTION PROTOTYPES FOR PRIVATE FUNCTIONS WITH FILE LEVEL SCOPE********************************/
-void pushFrontFlq(q15_t * arr, uint32_t len, q15_t data);
 void clearArrayq(q15_t * arr, uint32_t len);
-void pushFrontFlf(float32_t * arr, uint32_t len, float32_t data);
 void clearArrayf(float32_t * arr, uint32_t len);
+void ADCInputTof(unsigned int * arrDAC,float32_t * arrF,unsigned int N);
+void fToDACOutput(float32_t * arrF,unsigned int * arrDAC,unsigned int N);
+void InputMeasToF(InputMeasure *a, float32_t * err,float32_t * ref,float32_t * music,unsigned int N);
+
+
 /***************************************************GLOBAL FUNCTION DEFINITIONS*****************************************************/
-void createFxLMSInstanceQ(FxLMSInstanceQ *I, float32_t muSHat,uint32_t SHatOrder,float32_t mu,uint32_t WOrder)
-{
-	I->SHatOrder=SHatOrder;
-	arm_float_to_q15(&mu,&I->mu,1);
-	arm_float_to_q15(&muSHat,&I->muSHat,1);
-	I->WOrder=WOrder;
-	clearArrayq(I->SHat,I->SHatOrder);
-	clearArrayq(I->SHatStates,I->SHatOrder);
-	clearArrayq(I->XFilt,I->WOrder);
-	clearArrayq(I->NoiseStates,I->WOrder);
-	clearArrayq(I->Weights,I->WOrder);
-	initWNG();
-	arm_lms_init_q15(&(I->SecPathEst), I->SHatOrder, I->SHat, I->SHatStates, I->muSHat, 1, 4);
-}
-q15_t estSecPathQ(FxLMSInstanceQ* I,q15_t errMicSample)
-{
-	float32_t noise2Output=whiteNoiseGen(EST_SEC_NORM_STD); //To get normal random noise.
-	q15_t DACOutput, err,OutputEst;
-	arm_float_to_q15(&noise2Output,&DACOutput,1);
-	arm_lms_q15(&(I->SecPathEst),&DACOutput, &errMicSample,&OutputEst,&err,1); //Por que mierda no anda la re concha del pato
-
-	return DACOutput;
-}
-
-
-
-
-
-
-void createFxLMSInstanceF(FxLMSInstanceF *I,float32_t muSHat,uint32_t SHatOrder,float32_t mu,uint32_t COrder)
+#ifdef PROCESSING_W_F32
+void createFxLMSInstance(FxLMSInstance *I,float32_t muSHat,uint32_t SHatOrder,float32_t mu,uint32_t COrder)
 {
 	I->SHatOrder=SHatOrder;I->mu=mu;
-	I->muSHat=muSHat;I->COrder=COrder;
+	I->muSHat=muSHat;I->COrder=COrder; //Se copian los datos, para float no hay que procesar nada
 	clearArrayf(I->SHatCoefs,I->SHatOrder);
-	clearArrayf(I->SHatStates,I->SHatOrder);
+	clearArrayf(I->SHatStates,I->SHatOrder+BLOCKSIZE);
 	clearArrayf(I->ControllerCoefs,I->COrder);
-	clearArrayf(I->ControllerStates,I->COrder);
-	clearArrayf(I->ControllerLMSStates,I->COrder);
-	initWNG();
-	arm_lms_init_f32(&(I->SecPathEst), I->SHatOrder, I->SHatCoefs, I->SHatStates, I->muSHat, 1);
-	arm_lms_init_f32(&(I->ControllerTuner), I->COrder, I->ControllerCoefs, I->ControllerLMSStates, I->mu, 1);
-	arm_fir_init_f32(&(I->ControllerFIR), I->COrder,I->ControllerCoefs, I->ControllerStates, 1);
+	clearArrayf(I->ControllerStates,I->COrder+BLOCKSIZE);
+	clearArrayf(I->ControllerLMSStates,I->COrder+BLOCKSIZE);
+	initWNG(); //Inicialización de los filtros, los lms y el generador de ruido blanco
+	arm_lms_init_f32(&(I->SecPathEst), I->SHatOrder, I->SHatCoefs, I->SHatStates, I->muSHat, BLOCKSIZE);
+	arm_lms_init_f32(&(I->ControllerTuner), I->COrder, I->ControllerCoefs, I->ControllerLMSStates, I->mu, BLOCKSIZE);
+	arm_fir_init_f32(&(I->ControllerFIR), I->COrder,I->ControllerCoefs, I->ControllerStates, BLOCKSIZE);
 }
-
-q15_t estSecPathF(FxLMSInstanceF* I,q15_t errMicSample)
+void estSecPath(FxLMSInstance* I,unsigned int *errMicSamples,unsigned int *toOutput) //OJO CON ESTO QUE SI EL BLOCKSIZE ES MUY GRANDE LOS CEOFS SIEMPRE VAN A DAR 0!
 {
-	float32_t DACOutput=whiteNoiseGen(EST_SEC_NORM_STD); //To get normal random noise.
-	float32_t errMicFloat,err,OutputEst;
-	q15_t DACOutq15;
-	arm_q15_to_float(&errMicSample,&errMicFloat,1);
-	arm_lms_f32(&(I->SecPathEst),&DACOutput, &errMicFloat,&OutputEst,&err,1);
-	arm_float_to_q15(&DACOutput,&DACOutq15,1);
-	return DACOutq15;
+	float32_t DACOutput[BLOCKSIZE],errMicFloat[BLOCKSIZE],err[BLOCKSIZE],OutputEst[BLOCKSIZE];
+
+	whiteNoiseGen(DACOutput,EST_SEC_NORM_STD);
+	ADCInputTof(errMicSamples,errMicFloat,BLOCKSIZE);
+	arm_lms_f32(&(I->SecPathEst),&DACOutput, &errMicFloat,&OutputEst,&err,BLOCKSIZE);
+	fToDACOutput(DACOutput,toOutput,BLOCKSIZE);
 }
-void saveSecPathF(FxLMSInstanceF *I)
+void saveSecPath(FxLMSInstance *I)
 {
 	clearArrayf(I->SHatStates,I->SHatOrder);
-	arm_fir_init_f32(&(I->SHatFIR), I->SHatOrder,I->SHatCoefs, I->SHatStates, 1);
+	arm_fir_init_f32(&(I->SHatFIR), I->SHatOrder,I->SHatCoefs, I->SHatStates, BLOCKSIZE);
 }
-q15_t applyFxLMSF(FxLMSInstanceF* I,q15_t err,q15_t ref,q15_t music)
+void applyFxLMS(FxLMSInstance * I,InputMeasure *samples,unsigned int * toOutput)
 {
-	q15_t retVal;
-	float32_t errF,refF,musicF,xHat,ControllerInput,retValF=0,aux1,aux2;
-	arm_q15_to_float(&err,&errF,1);arm_q15_to_float(&ref,&refF,1);arm_q15_to_float(&music,&musicF,1);
-	ControllerInput=refF+musicF;
-	arm_fir_f32(&(I->SHatFIR),&refF, &xHat, 1); //Checkeado anda bn
-	arm_lms_f32(&(I->ControllerTuner),&xHat,&errF,&aux1,&aux2,1);
-	arm_fir_f32(&(I->ControllerFIR),&ControllerInput, &retValF, 1);
-	retValF=-retValF; //Esto no se muy bn porque
-	arm_float_to_q15(&retValF,&retVal,1);
-	return retVal;
+	float32_t err[BLOCKSIZE],ref[BLOCKSIZE],music[BLOCKSIZE],xHat[BLOCKSIZE],ControllerInput[BLOCKSIZE],retValF[BLOCKSIZE],aux1[BLOCKSIZE],aux2[BLOCKSIZE];
+	InputMeasToF(samples, err,ref,music,BLOCKSIZE);
+	for(unsigned int j=0;j<BLOCKSIZE;j++)
+		ControllerInput[j]=ref[j]+music[j]; //Ponemos el Input al controller de una
+	arm_fir_f32(&(I->SHatFIR),ref, xHat, BLOCKSIZE); //Checkeado anda bn
+	arm_lms_f32(&(I->ControllerTuner),xHat,err,aux1,aux2,BLOCKSIZE);
+	arm_fir_f32(&(I->ControllerFIR),ControllerInput,retValF, BLOCKSIZE);
+	for(unsigned int j=0;j<BLOCKSIZE;j++)
+		retValF[j]=-retValF[j]; //Esto no se muy bn porque
+	fToDACOutput(retValF,toOutput,BLOCKSIZE);
 }
-/*float32_t applyFxLMS(FxLMSInstance* I, float32_t noiseSample,float32_t musicSample,float32_t errMicSample)
+#elif PROCESSING_W_Q15
+void createFxLMSInstanceF(FxLMSInstance *I,float32_t muSHat,uint32_t SHatOrder,float32_t mu,uint32_t COrder)
 {
-	float32_t aux[MAX_WEIGHT_ORDER], output,XFilt;
-	arm_scale_f32(I->XFilt, I->mu*errMicSample, aux, I->WOrder);
-	arm_add_f32(I->Weights, aux, I->Weights, I->WOrder); //Given the output, Adjusts weights from previous states
 
-	pushFrontFl(I->NoiseStates, I->WOrder, noiseSample); //Obtains New states
-	pushFrontFl(I->SHatStates, I->SHatOrder, noiseSample);
-	arm_dot_prod_f32(I->SHat, I->SHatStates, I->SHatOrder, &XFilt);
-	pushFrontFl(I->XFilt, I->WOrder, XFilt);
-	arm_dot_prod_f32(I->Weights, I->NoiseStates, I->WOrder, &output);//Noise at err mic estimation
-	output*=(-1); //IMPORTANTISIMOOOO!
-	output+=musicSample;
-	return output;
-}*/
-/****************************************************LOCAL FUNCTION DEFINITIONS*****************************************************/
-void pushFrontFlq(q15_t * arr, uint32_t len, q15_t data)
-{
-	arm_copy_q15 (arr, arr+1, len-1);
-	arr[0]=data;
 }
+void estSecPathF(FxLMSInstance* I,unsigned int *errMicSamples,unsigned int *toOutput)
+{
+
+}
+void saveSecPathF(FxLMSInstance *I)
+{
+
+}
+void applyFxLMSF(FxLMSInstance * I,InputMeasure *samples,InputMeasure * toOutput)
+{
+
+}
+#elif PROCESSING_W_Q31
+void createFxLMSInstanceF(FxLMSInstance *I,float32_t muSHat,uint32_t SHatOrder,float32_t mu,uint32_t COrder)
+{
+
+}
+void estSecPathF(FxLMSInstance* I,unsigned int *errMicSamples,unsigned int *toOutput)
+{
+
+}
+void saveSecPathF(FxLMSInstance *I)
+{
+
+}
+void applyFxLMSF(FxLMSInstance * I,InputMeasure *samples,InputMeasure * toOutput)
+{
+
+}
+#endif
+
+/****************************************************LOCAL FUNCTION DEFINITIONS*****************************************************/
 void clearArrayq(q15_t * arr, uint32_t len)
 {
 	for(unsigned int i=0;i<len;i++)
 		arr[i]=0;
 }
-void pushFrontFlf(float32_t * arr, uint32_t len, float32_t data)
-{
-	arm_copy_f32(arr, arr+1, len-1);
-	arr[0]=data;
-}
 void clearArrayf(float32_t * arr, uint32_t len)
 {
 	for(unsigned int i=0;i<len;i++)
 		arr[i]=0;
+}
+
+void ADCInputTof(unsigned int * arrDAC,float32_t * arrF,unsigned int N)
+{
+	for(unsigned int i=0;i<N;i++)
+	{
+		arrF[i]=((float)arrDAC[i]-2048.0f)/2048.0f;
+	}
+}
+void InputMeasToF(InputMeasure *a, float32_t * err,float32_t * ref,float32_t * music,unsigned int N)
+{
+
+}
+void fToDACOutput(float32_t * arrF,unsigned int * arrDAC,unsigned int N)
+{
+	float32_t aux;
+	for(unsigned int i=0;i<N;i++)
+	{
+		aux= (arrF[i]>1.0)? 1:((arrF[i]<-1.0)? -1:arrF[i] );
+		arrDAC[i]=(aux+1.0f)*2048.0f;
+	}
 }
