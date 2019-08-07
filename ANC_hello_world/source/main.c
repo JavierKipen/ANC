@@ -1,4 +1,3 @@
-#include "math_helper.h"
 #include "fsl_device_registers.h"
 //#include "fsl_debug_console.h"
 #include "board.h"
@@ -9,6 +8,7 @@
 
 #include "fsl_dac.h"
 #include <stdlib.h>
+#include "CommonConfig.h"
 
 #define DAC_BASEADDR DAC0
 
@@ -19,10 +19,7 @@
 #define CALIB_SAMPLES 10000
 typedef enum{CALIBRATION, ANC, ERROR_ANC}ANC_STATES;
 
-float32_t SHatPrev[50];
-
-float32_t micTakes[2000];
-float32_t noiseOut[2000];
+void extractErr(InputMeasure * InputMeasure,unsigned int *errMicSamples);
 
 int32_t main(void)
 {
@@ -31,79 +28,84 @@ int32_t main(void)
   BOARD_InitDebugConsole();
 
   initIOInterface();
-#ifndef ANC_FINAL
-#ifdef FLMS_SECPATH //Second path test
-  float32_t muSHat=1;float32_t mu=0.1;
-  uint32_t SHatOrder=8;uint32_t WOrder=4;uint32_t i=0;
-  FxLMSInstanceF I;
-  createFxLMSInstanceF(&I,muSHat,SHatOrder,mu,WOrder);
-  while(1)
-  {
-	  InputMeasure im=getInputs();
-	  q15_t sendVal = estSecPathF(&I,im.errMicSample);
-	  pushOutput(sendVal);
-	  i++;
-	  if(i==10000)
-		  i++; //Esto parece funcionar
-  }
-#else //ANC entero test
-  float32_t muSHat=0.05;float32_t mu=0.002;
-  uint32_t SHatOrder=5;uint32_t WOrder=15;unsigned long long i=0;
-  FxLMSInstanceF I;
-  float32_t secPathCoefs[]={0.1, 0.2, 0.3,0.1,0};
-  createFxLMSInstanceF(&I,muSHat,SHatOrder,mu,WOrder);
-  arm_copy_f32 (secPathCoefs, I.SHatCoefs, 5);
-  saveSecPathF(&I);
-  pushOutput(0);//To start matlab script
-  while(1)
-  {
-	  InputMeasure im=getInputs();
-	  pushOutput(applyFxLMSF(&I,im.errMicSample,im.noiseSample,im.musicSample));
-  }
-#endif
-
-#else
-  ANC_STATES state=CALIBRATION;
-  //clock_t start;
-
-  float32_t muSHat=0.01;float32_t mu=0.01;
-  uint32_t SHatOrder=6;uint32_t WOrder=4;uint32_t sampleCount=0;
-
-
-
-  while(state != ERROR_ANC)
-  {
+#ifndef IO_FROM_PC
+	ANC_STATES state=CALIBRATION;
+	float32_t muSHat=0.01;float32_t mu=0.01;
+	uint32_t SHatOrder=8;uint32_t WOrder=10;uint32_t sampleCount=0;
+	InputMeasure im[BLOCKSIZE];
+	unsigned int DACOut[BLOCKSIZE],errMicSamples[BLOCKSIZE];
+	FxLMSInstance I;
+	createFxLMSInstance(&I,muSHat,SHatOrder,mu,WOrder);
+	while(state != ERROR_ANC)
+	{
 	  if(newInputAvailable())
 	  {
-		  InputMeasure im=getInputs();
+		  getInputs(im);
 		  if(state==CALIBRATION)
 		  {
-			  pushOutput(estSecPath(&I,im.errMicSample));
-		  	  sampleCount++;
+			  extractErr(im,errMicSamples);
+			  estSecPath(&I,errMicSamples,DACOut);
+			  pushOutput(DACOut);
+			  sampleCount++;
 		  }
 		  else if(state==ANC)
-			  pushOutput(applyFxLMS(&I, im.noiseSample,im.musicSample,im.errMicSample));
+		  {
+			  applyFxLMS(&I,im,DACOut);//Se tomará el input como un array de BLOCKSIZE elementos
+			  pushOutput(DACOut);
+		  }
 
 		  if(state==CALIBRATION && sampleCount > CALIB_SAMPLES)
-			  {
-			  state=ANC;
-			  saveSecPathF(&I);
-			  }
-		  if(isProcessingTimeRisky((float32_t)(clock()-start)/CLOCKS_PER_SEC))
-			  state=ERROR_ANC;
-		 /* if(state==CALIBRATION && sampleCount%10000 == 0)
-		  {
-			  float err=0;
-			  for(unsigned int j=0; j<SHatOrder;j++)
-				  err+=(I.SHat[j]-SHatPrev[j])*(I.SHat[j]-SHatPrev[j]);
-			  memcpy(SHatPrev,I.SHat,SHatOrder*sizeof(float));
-			  PRINTF("Cost: %d \n",(unsigned int)(err*10000000));
-
-		  }*/
+		  {	state=ANC;saveSecPath(&I);}
+		  //if(isProcessingTimeRisky((float32_t)(clock()-start)/CLOCKS_PER_SEC))
+			 // state=ERROR_ANC;
 	  }
-  }
-  while(1);
+	}
+	while(1);
+#else
+
+#ifdef EST_SEC_TEST//Second path test
+	float32_t muSHat=0.01;float32_t mu=0.01;
+	uint32_t SHatOrder=8;uint32_t WOrder=10;
+	InputMeasure im[BLOCKSIZE];
+	unsigned int DACOut[BLOCKSIZE],errMicSamples[BLOCKSIZE],i=0;
+	FxLMSInstance I;
+	createFxLMSInstance(&I,muSHat,SHatOrder,mu,WOrder);
+	while(1)
+	{
+		getInputs(im);
+		extractErr(im,errMicSamples);
+		estSecPath(&I,errMicSamples,DACOut);
+		pushOutput(DACOut);
+		i++;
+		if(i==10000)
+			i++; //Esto parece funcionar
+	}
+#else //ANC  test ya obtenido el sec path
+	ANC_STATES state=CALIBRATION;
+	float32_t muSHat=0.01;float32_t mu=0.01;
+	uint32_t SHatOrder=8;uint32_t WOrder=10;
+	InputMeasure im[BLOCKSIZE];
+	unsigned int DACOut[BLOCKSIZE];
+	FxLMSInstance I;
+	createFxLMSInstance(&I,muSHat,SHatOrder,mu,WOrder);
+	float32_t secPathCoefs[]={0.1, 0.2, 0.3,0.1,0};
+	arm_copy_f32 (secPathCoefs, I.SHatCoefs, 5);
+	saveSecPath(&I);
+	pushOutput(0);//To start matlab script
+	while(1)
+	{
+		getInputs(im);
+		applyFxLMS(&I,im,DACOut);
+		pushOutput(DACOut);
+	}
+#endif
+
 #endif
   return 0;
+
+}
+
+void extractErr(InputMeasure * InputMeasure,unsigned int *errMicSamples)
+{
 
 }

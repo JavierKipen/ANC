@@ -25,7 +25,6 @@ void ranf(float *rNmbs,unsigned NNmbs)
 	RNGA_GetRandomData(RNG, uintRand, NNmbs+1);
 	for(unsigned int i=0;i<NNmbs;i++)
 		rNmbs[i]=(float)uintRand[i] / (float)UINT32_MAX;
-	return aux;
 }
 void whiteNoiseGen(float32_t *WGN,float32_t s)
 {
@@ -34,11 +33,5 @@ void whiteNoiseGen(float32_t *WGN,float32_t s)
 	for(unsigned int i=0;i<BLOCKSIZE;i++)
 		WGN[i]=whiteNoise[((unsigned int)indexes[i]*WHITE_NOISE_SAMPLES)]*s; //Elige un sample random de ruido gausiano normal y lo multiplica por el s deseado
 }
-float32_t whiteNoiseGen(float32_t s)
-{				        /* mean m, standard deviation s */
-	unsigned int index =(unsigned int)(ranf()*WHITE_NOISE_SAMPLES); //Elige una de las samples al azar
-	return whiteNoise[index]*s;
-}
-
 
 

@@ -24,6 +24,13 @@ typedef struct{
 //#define PROCESSING_W_Q31
 
 #define ENABLE_FAST_FIR_FOR_Q //Con este define se elige usar filtros fir más rápidos pero con menos precisión para los casos de procesamiento con punto fijo
+
+
+#define IO_FROM_PC //Define si el input viene por la pc
+#ifdef IO_FROM_PC
+	#define EST_SEC_TEST //En el caso de que esté definido IO_FROM_PC indica que es para probar la estimación del camino secundario. Sino es para probar lo otro.
+#endif
+
 /************************************************FUNCTION PROTOTYPES WITH GLOBAL SCOPE***********************************************/
 
 

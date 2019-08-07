@@ -12,7 +12,7 @@
 #include "arm_math.h"
 #include "CommonConfig.h"
 /*********************************************CONSTANT AND MACRO DEFINITIONS USING #DEFINE******************************************/
-#define MAX_FILTER_ORDER 50
+#define MAX_ORDER 50
 
 /* Here is the sketch of the system.
 %
@@ -36,6 +36,7 @@
 typedef struct{
 	float32_t SHatCoefs[MAX_ORDER],SHatStates[MAX_ORDER+BLOCKSIZE]; //Estimación del camino secundario
 	float32_t ControllerCoefs[MAX_ORDER],ControllerLMSStates[MAX_ORDER+BLOCKSIZE],ControllerStates[MAX_ORDER+BLOCKSIZE];
+	float32_t prevOutputs[BLOCKSIZE];
 	float32_t mu,muSHat; //mu para el entrenamiento final, y para la estimacion del cam secundario.
 	arm_lms_instance_f32 SecPathEst,ControllerTuner;
 	arm_fir_instance_f32 SHatFIR,ControllerFIR;

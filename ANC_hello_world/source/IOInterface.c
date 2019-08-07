@@ -23,8 +23,7 @@
 
 
 
-#define IO_FROM_PC
-#define ANC_TEST
+
 /******************************************** DEFINES, STATIC VARIABLES AND STRUCTS ************************************************/
 #ifndef IO_FROM_PC
 //FTM Defines
@@ -206,16 +205,7 @@ float ADCRead2Voltage(float i)
 void initIOInterface()
 {
 	uart_config_t config;
-/*
-	 * config.baudRate_Bps = 115200U;
-	 * config.parityMode = kUART_ParityDisabled;
-	 * config.stopBitCount = kUART_OneStopBit;
-	 * config.txFifoWatermark = 0;
-	 * config.rxFifoWatermark = 1;
-	 * config.enableTx = false;
-	 * config.enableRx = false;
-	 */
-	UART_GetDefaultConfig(&config);
+	UART_GetDefaultConfig(&config); //config.baudRate_Bps = 115200U;
 	config.enableTx = true;
 	config.enableRx = true;
 	UART_Init(UART0, &config, DEMO_UART_CLK_FREQ);
@@ -224,46 +214,49 @@ int newInputAvailable()
 {
 	return 1;
 }
-#ifdef SECPATH_TEST
-InputMeasure getInputs()
+#ifdef EST_SEC_TEST
+void getInputs(InputMeasure *Inputs)
 {
-	InputMeasure retVal;
-	uint8_t read[2];
-	uint16_t high,low;
-	UART_ReadBlocking(UART0, read, 2);
-	high=((uint16_t)read[1])<<8;
-	low=(uint16_t)read[0];
-	retVal.errMicSample=high+low;
-	return retVal;
+	uint8_t read[2*BLOCKSIZE],offset;
+	UART_ReadBlocking(UART0, read, 2*BLOCKSIZE); //2 bytes para cada read
+	for(unsigned int i=0;i<BLOCKSIZE;i++)
+	{
+		offset=i*BLOCKSIZE;
+		Inputs[i].noiseSample=0;
+		Inputs[i].errMicSample=(((uint16_t)read[1+offset])<<8)+((uint16_t)read[offset]);
+		Inputs[i].musicSample=0;
+	}
+
 }
-void pushOutput(q15_t output)
+#else
+void getInputs(InputMeasure *Inputs)
 {
-	uint8_t toSend[2];
-	toSend[0]=output&0xFF;
-	toSend[1]=output>>8;
-	UART_WriteBlocking(UART0, toSend, 2);
-}
-#endif
-#ifdef ANC_TEST
-InputMeasure getInputs()
-{
-	InputMeasure retVal;
-	uint8_t read[6];
-	UART_ReadBlocking(UART0, read, 6);
-	retVal.noiseSample=(((uint16_t)read[1])<<8)+((uint16_t)read[0]);
-	retVal.errMicSample=(((uint16_t)read[3])<<8)+((uint16_t)read[2]);
-	retVal.musicSample=(((uint16_t)read[5])<<8)+((uint16_t)read[4]);
-	return retVal;
-}
-void pushOutput(q15_t output)
-{
-	uint8_t toSend[2];
-	toSend[0]=output&0xFF;
-	toSend[1]=output>>8;
-	UART_WriteBlocking(UART0, toSend, 2);
+	uint8_t read[6*BLOCKSIZE],offset;
+	UART_ReadBlocking(UART0, read, 6*BLOCKSIZE); //2 bytes para cada read
+	for(unsigned int i=0;i<BLOCKSIZE;i++)
+	{
+		offset=i*BLOCKSIZE;
+		Inputs[i].noiseSample=(((uint16_t)read[1+offset])<<8)+((uint16_t)read[0+offset]);
+		Inputs[i].errMicSample=(((uint16_t)read[3+offset])<<8)+((uint16_t)read[2+offset]);
+		Inputs[i].musicSample=(((uint16_t)read[5+offset])<<8)+((uint16_t)read[4+offset]);
+	}
+
 }
 
 #endif
+void pushOutput(unsigned int *outputs)
+{
+	uint8_t toSend[2*BLOCKSIZE];
+	unsigned int offset=0;
+	for(unsigned int i=0;i<BLOCKSIZE;i++)
+	{
+		offset=i*BLOCKSIZE;
+		toSend[offset]=outputs[i]&0xFF;
+		toSend[1+offset]=outputs[i]>>8;
+	}
+	UART_WriteBlocking(UART0, toSend, 2*BLOCKSIZE);
+}
+
 int isProcessingTimeRisky(float processingTime)
 {
 	return 0;

@@ -8,10 +8,6 @@
 #include <ANC_FxLMS.h>
 #include "whiteNoiseGen.h"
 
-
-float32_t outputDebug[1000],micDebug[1000],X[1000],X2[1000];
-static unsigned int cont=0;
-
 /******************************************** DEFINES, STATIC VARIABLES AND STRUCTS ************************************************/
 #define EST_SEC_NORM_STD 0.05
 /************************************FUNCTION PROTOTYPES FOR PRIVATE FUNCTIONS WITH FILE LEVEL SCOPE********************************/
@@ -44,8 +40,10 @@ void estSecPath(FxLMSInstance* I,unsigned int *errMicSamples,unsigned int *toOut
 
 	whiteNoiseGen(DACOutput,EST_SEC_NORM_STD);
 	ADCInputTof(errMicSamples,errMicFloat,BLOCKSIZE);
-	arm_lms_f32(&(I->SecPathEst),&DACOutput, &errMicFloat,&OutputEst,&err,BLOCKSIZE);
+	arm_lms_f32(&(I->SecPathEst),I->prevOutputs, errMicFloat,OutputEst,err,BLOCKSIZE);
 	fToDACOutput(DACOutput,toOutput,BLOCKSIZE);
+	for(unsigned int i=0;i<BLOCKSIZE;i++)
+		I->prevOutputs[i]=DACOutput[i];
 }
 void saveSecPath(FxLMSInstance *I)
 {
@@ -64,6 +62,7 @@ void applyFxLMS(FxLMSInstance * I,InputMeasure *samples,unsigned int * toOutput)
 	for(unsigned int j=0;j<BLOCKSIZE;j++)
 		retValF[j]=-retValF[j]; //Esto no se muy bn porque
 	fToDACOutput(retValF,toOutput,BLOCKSIZE);
+
 }
 #elif PROCESSING_W_Q15
 void createFxLMSInstanceF(FxLMSInstance *I,float32_t muSHat,uint32_t SHatOrder,float32_t mu,uint32_t COrder)
@@ -122,6 +121,12 @@ void ADCInputTof(unsigned int * arrDAC,float32_t * arrF,unsigned int N)
 }
 void InputMeasToF(InputMeasure *a, float32_t * err,float32_t * ref,float32_t * music,unsigned int N)
 {
+	for(unsigned int i=0;i<N;i++)
+	{
+		err[i]=((float)a[i].errMicSample-2048.0f)/2048.0f;
+		ref[i]=((float)a[i].noiseSample-2048.0f)/2048.0f;
+		music[i]=((float)a[i].musicSample-2048.0f)/2048.0f;
+	}
 
 }
 void fToDACOutput(float32_t * arrF,unsigned int * arrDAC,unsigned int N)
