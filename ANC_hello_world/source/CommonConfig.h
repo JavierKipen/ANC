@@ -16,7 +16,8 @@ typedef struct{
 	unsigned int noiseSample,musicSample,errMicSample;
 }InputMeasure; //Los sampleos siempre van a ser estos 3 o se puede obviar alguno.
 #define SAMPLING_FREQ 35e3
-#define BLOCKSIZE 1 //Cantidad de muestras que se procesan al mismo tiempo
+#define BLOCKSIZE 2 //Cantidad de muestras que se procesan al mismo tiempo
+#define MAX_BLOCKSIZE 100
 
 //De los de abajo se tiene que elegir 1, para determinar como se hacen los cálculos:
 #define PROCESSING_W_F32

@@ -19,19 +19,19 @@ void initWNG()
 	RNGA_Init(RNG);
 }
 
-void ranf(float *rNmbs,unsigned NNmbs)
+void ranf(float *rNmbs)
 {
-	uint32_t uintRand[NNmbs+1]; //Se genera 1 número más porque si pedís 1 solo número no anda la funcion no se pk
-	RNGA_GetRandomData(RNG, uintRand, NNmbs+1);
-	for(unsigned int i=0;i<NNmbs;i++)
+	uint32_t uintRand[BLOCKSIZE]; //Se genera 1 número más porque si pedís 1 solo número no anda la funcion no se pk
+	RNGA_GetRandomData(RNG, uintRand, sizeof(uintRand));
+	for(unsigned int i=0;i<BLOCKSIZE;i++)
 		rNmbs[i]=(float)uintRand[i] / (float)UINT32_MAX;
 }
 void whiteNoiseGen(float32_t *WGN,float32_t s)
 {
 	float32_t indexes[BLOCKSIZE];
-	ranf(indexes,BLOCKSIZE);
+	ranf(indexes);
 	for(unsigned int i=0;i<BLOCKSIZE;i++)
-		WGN[i]=whiteNoise[((unsigned int)indexes[i]*WHITE_NOISE_SAMPLES)]*s; //Elige un sample random de ruido gausiano normal y lo multiplica por el s deseado
+		WGN[i]=whiteNoise[(unsigned int)(indexes[i]*WHITE_NOISE_SAMPLES)]*s; //Elige un sample random de ruido gausiano normal y lo multiplica por el s deseado
 }
 
 

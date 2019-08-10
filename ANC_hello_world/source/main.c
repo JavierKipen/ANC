@@ -70,6 +70,7 @@ int32_t main(void)
 	unsigned int DACOut[BLOCKSIZE],errMicSamples[BLOCKSIZE],i=0;
 	FxLMSInstance I;
 	createFxLMSInstance(&I,muSHat,SHatOrder,mu,WOrder);
+	pushOutput(0); //Manda cero para empezar debug con matlab
 	while(1)
 	{
 		getInputs(im);
@@ -78,7 +79,7 @@ int32_t main(void)
 		pushOutput(DACOut);
 		i++;
 		if(i==10000)
-			i++; //Esto parece funcionar
+			i++;
 	}
 #else //ANC  test ya obtenido el sec path
 	ANC_STATES state=CALIBRATION;
@@ -107,5 +108,8 @@ int32_t main(void)
 
 void extractErr(InputMeasure * InputMeasure,unsigned int *errMicSamples)
 {
-
+	for(unsigned int i=0;i<BLOCKSIZE;i++)
+	{
+		errMicSamples[i]=InputMeasure[i].errMicSample;
+	}
 }

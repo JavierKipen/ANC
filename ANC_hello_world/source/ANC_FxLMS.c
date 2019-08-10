@@ -9,7 +9,7 @@
 #include "whiteNoiseGen.h"
 
 /******************************************** DEFINES, STATIC VARIABLES AND STRUCTS ************************************************/
-#define EST_SEC_NORM_STD 0.05
+#define EST_SEC_NORM_STD 0.5
 /************************************FUNCTION PROTOTYPES FOR PRIVATE FUNCTIONS WITH FILE LEVEL SCOPE********************************/
 void clearArrayq(q15_t * arr, uint32_t len);
 void clearArrayf(float32_t * arr, uint32_t len);
