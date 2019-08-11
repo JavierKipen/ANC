@@ -89,7 +89,7 @@ int32_t main(void)
 	unsigned int DACOut[BLOCKSIZE];
 	FxLMSInstance I;
 	createFxLMSInstance(&I,muSHat,SHatOrder,mu,WOrder);
-	float32_t secPathCoefs[]={0.1, 0.2, 0.3,0.1,0};
+	float32_t secPathCoefs[]={0.1, 0.2, 0.3,0.1,0.5};
 	arm_copy_f32 (secPathCoefs, I.SHatCoefs, 5);
 	saveSecPath(&I);
 	pushOutput(0);//To start matlab script
