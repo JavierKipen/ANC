@@ -81,10 +81,10 @@ int32_t main(void)
 		if(i==10000)
 			i++;
 	}
-#else //ANC  test ya obtenido el sec path
-	ANC_STATES state=CALIBRATION;
+#else
+	#ifdef FXLMS_APP_TEST
 	float32_t muSHat=0.01;float32_t mu=0.01;
-	uint32_t SHatOrder=8;uint32_t WOrder=10;
+	uint32_t SHatOrder=5;uint32_t WOrder=4;
 	InputMeasure im[BLOCKSIZE];
 	unsigned int DACOut[BLOCKSIZE];
 	FxLMSInstance I;
@@ -99,6 +99,7 @@ int32_t main(void)
 		applyFxLMS(&I,im,DACOut);
 		pushOutput(DACOut);
 	}
+	#endif
 #endif
 
 #endif
