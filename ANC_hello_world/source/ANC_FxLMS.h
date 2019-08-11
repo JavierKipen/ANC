@@ -42,7 +42,8 @@ typedef struct{
 	arm_fir_instance_f32 SHatFIR,ControllerFIR;
 	uint32_t SHatOrder, COrder;
 }FxLMSInstance;
-#elif PROCESSING_W_Q15
+#else
+	#ifdef PROCESSING_W_Q15
 typedef struct{
 	q15_t SHatCoefs[MAX_ORDER],SHatStates[MAX_ORDER+BLOCKSIZE]; //Estimación del camino secundario
 	q15_t ControllerCoefs[MAX_ORDER],ControllerLMSStates[MAX_ORDER+BLOCKSIZE],ControllerStates[MAX_ORDER+BLOCKSIZE];
@@ -51,15 +52,17 @@ typedef struct{
 	arm_fir_instance_q15 SHatFIR,ControllerFIR;
 	uint32_t SHatOrder, COrder;
 }FxLMSInstance;
-#elif PROCESSING_W_Q31
+	#else //PROCESSING_W_Q31
 typedef struct{
 	q31_t SHatCoefs[MAX_ORDER],SHatStates[MAX_ORDER+BLOCKSIZE]; //Estimación del camino secundario
-	q31 ControllerCoefs[MAX_ORDER],ControllerLMSStates[MAX_ORDER+BLOCKSIZE],ControllerStates[MAX_ORDER+BLOCKSIZE];
-	q31 mu,muSHat; //mu para el entrenamiento final, y para la estimacion del cam secundario.
+	q31_t ControllerCoefs[MAX_ORDER],ControllerLMSStates[MAX_ORDER+BLOCKSIZE],ControllerStates[MAX_ORDER+BLOCKSIZE];
+	q31_t prevOutputs[BLOCKSIZE];
+	q31_t mu,muSHat; //mu para el entrenamiento final, y para la estimacion del cam secundario.
 	arm_lms_instance_q31 SecPathEst,ControllerTuner;
 	arm_fir_instance_q31 SHatFIR,ControllerFIR;
 	uint32_t SHatOrder, COrder;
 }FxLMSInstance;
+	#endif
 #endif
 /************************************************FUNCTION PROTOTYPES WITH GLOBAL SCOPE***********************************************/
 void createFxLMSInstance(FxLMSInstance *I,float32_t muSHat,uint32_t SHatOrder,float32_t mu,uint32_t COrder);

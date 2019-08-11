@@ -20,9 +20,9 @@ typedef struct{
 #define MAX_BLOCKSIZE 100
 
 //De los de abajo se tiene que elegir 1, para determinar como se hacen los cálculos:
-#define PROCESSING_W_F32
+//#define PROCESSING_W_F32
 //#define PROCESSING_W_Q15
-//#define PROCESSING_W_Q31
+#define PROCESSING_W_Q31
 
 #define ENABLE_FAST_FIR_FOR_Q //Con este define se elige usar filtros fir más rápidos pero con menos precisión para los casos de procesamiento con punto fijo
 
